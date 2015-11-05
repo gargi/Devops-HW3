@@ -3,57 +3,36 @@ var multer  = require('multer')
 var express = require('express')
 var fs      = require('fs')
 var http = require('http')
-var httpProxy = require('http-proxy')
+var HttpProxy = require('http-proxy')
 var app = express()
 // REDIS
 var client = redis.createClient(6379, '127.0.0.1', {})
-
-//
-// HTTP SERVER
-var server = app.listen(3000, function () {
-
- var host = server.address().address
- var port = server.address().port
-
- console.log('Example app listening at http://%s:%s', host, port)
-})
-
 ///////////// WEB ROUTES
 
 // Add hook to make it easier to get all visited URLS.
 app.use(function(req, res, next)
 {
-	client.lpush("RecentList",req.protocol + "://" + req.get('host') + req.originalUrl)
-  console.log("RecentList",req.protocol + "://" + req.get('host') + req.originalUrl);
+	client.lpush("RecentList",req.protocol + "://" + req.get('host') + req.originalUrl, function(err,reply){
+//  console.log("RecentList",req.protocol + "://" + req.get('host') + req.originalUrl);
 	client.ltrim("RecentList",0,4);
+})
 	next(); // Passing the request to the next handler in the stack.
 });
+//client.lpush("Queue1","");
+var proxyServer = HttpProxy.createProxyServer()
 
-app.get('/', function (req, res) {
-		 res.send("Welcome");
-});
+var httpServer = http.createServer(function(req, res)
+{
 
-app.get('/set', function (req, res) {
-	client.set("key", "this message will self-destruct in 10 seconds");
-	client.expire("key",10);
-	res.send('Key is set');
-});
+	client.rpoplpush('Queue', 'Queue', function(err, reply) {
+		console.log(reply);
+		console.log(req.url)
+		proxyServer.web(req, res,{target: reply})
+	})
 
-app.get('/get', function (req, res) {
-		client.get("key", function(err,value){
-			console.log('The value is: ' + value);
-		 res.send(value)});
-});
-
-
-
-
-app.get('/recent', function(req, res) {
-client.lrange("RecentList",0,4,function(err,val){
-	res.send(val);
-})
 })
 
+httpServer.listen(3002)
 
 app.post('/upload',[ multer({ dest: './uploads/'}), function(req, res){
     console.log(req.body) // form fields
@@ -80,3 +59,43 @@ app.get('/meow', function(req, res) {
         res.end();
  		})
  })
+
+// HTTP SERVER
+var server1 = app.listen(3000, function () {
+  var host1 = server1.address().address
+  var port1 = server1.address().port
+  client.del('Queue')
+  client.lpush('Queue', "http://localhost:"+port1)
+  console.log('Example app listening at http://%s:%s', host1, port1)
+})
+
+var server2 = app.listen(3001, function () {
+
+  var host2 = server2.address().address
+  var port2 = server2.address().port
+  client.lpush("Queue", "http://localhost:"+port2)
+  console.log('Example app listening at http://%s:%s', host2, port2)
+})
+
+app.get('/', function (req, res) {
+		 res.send("Welcome");
+});
+
+app.get('/set', function (req, res) {
+	client.set("key", "this message will self-destruct in 10 seconds");
+	client.expire("key",10);
+	res.send('Key is set');
+});
+
+app.get('/get', function (req, res) {
+		client.get("key", function(err,value){
+			console.log('The value is: ' + value);
+		 res.send(value)});
+});
+
+
+app.get('/recent', function(req, res) {
+client.lrange("RecentList",0,4,function(err,val){
+	res.send(val);
+})
+})
