@@ -6,74 +6,36 @@ Cache, Proxies, Queues
 * Clone this repo, run `npm install`.
 * Install redis and run on localhost:6379
 
-### A simple web server
+There are three files, main3000.js, main3001.js and proxy.js.
 
-Use [express](http://expressjs.com/) to install a simple web server.
+#### Complete set/get for an expiring cache
 
-	var server = app.listen(3000, function () {
-	
-	  var host = server.address().address
-	  var port = server.address().port
-	
-	  console.log('Example app listening at http://%s:%s', host, port)
-	})
+The /set route is used for setting a key in redis with the value "this message will self-destruct in 10 seconds". After the key has been set, the value persists for 10 seconds and can be retrieved using the /get route.
 
-Express uses the concept of routes to use pattern matching against requests and sending them to specific functions.  You can simply write back a response body.
+#### Complete recent
 
-	app.get('/', function(req, res) {
-	  res.send('hello world')
-	})
+If we run main.js on port 3000, then localhost:3000/recent displays a list of 5 recently visited sites.
 
-### Redis
+#### Complete upload/meow
 
-You will be using [redis](http://redis.io/) to build some simple infrastructure components, using the [node-redis client](https://github.com/mranney/node_redis).
+The following curl command is used to upload image from the command line.
 
-	var redis = require('redis')
-	var client = redis.createClient(6379, '127.0.0.1', {})
+```
+curl -F "image=@./img/morning.jpg" localhost:3000/upload
+```
 
-In general, you can run all the redis commands in the following manner: client.CMD(args). For example:
+The method /upload saves this image in a queue. The method /meow pops it from the queue and displays on localhost:3000/meow.
 
-	client.set("key", "value");
-	client.get("key", function(err,value){ console.log(value)});
+#### Additional service instance
 
-### An expiring cache
+An additional instance can be run using the following command:
+```
+ main3001.js.
+```
 
-Create two routes, `/get` and `/set`.
+#### Demonstrate proxy
 
-When `/set` is visited, set a new key, with the value:
-> "this message will self-destruct in 10 seconds".
+The file proxy.js creates a proxy server that listens on port 3002 and uniformly delivers requests to the ports 3000 and 3001.
 
-Use the expire command to make sure this key will expire in 10 seconds.
-
-When `/get` is visited, fetch that key, and send value back to the client: `res.send(value)` 
-
-
-### Recent visited sites
-
-Create a new route, `/recent`, which will display the most recently visited sites.
-
-There is already a global hook setup, which will allow you to see each site that is requested:
-
-	app.use(function(req, res, next) 
-	{
-	...
-
-Use the lpush, ltrim, and lrange redis commands to store the most recent 5 sites visited, and return that to the client.
-
-### Cat picture uploads: queue
-
-Implement two routes, `/upload`, and `/meow`.
- 
-A stub for upload and meow has already been provided.
-
-Use curl to help you upload easily.
-
-	curl -F "image=@./img/morning.jpg" localhost:3000/upload
-
-Have `upload` store the images in a queue.  Have `meow` display the most recent image to the client and *remove* the image from the queue.
-
-### Proxy server
-
-Bonus: How might you use redis and express to introduce a proxy server?
-
-See [rpoplpush](http://redis.io/commands/rpoplpush)
+#### Screencast
+[Demo](https://youtu.be/vnaphFaUBaE)
