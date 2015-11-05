@@ -30,7 +30,7 @@ The method /upload saves this image in a queue. The method /meow pops it from th
 
 An additional instance can be run using the following command:
 ```
- main3001.js.
+node main3001.js.
 ```
 
 #### Demonstrate proxy
